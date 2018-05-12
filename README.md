@@ -11,5 +11,5 @@ Functions
 - `pom#calculate(y, m, d)`: Return the phase as a number from 0 to 7
 - `pom#phaseFor(y, m, d)`: Return a string for the phase
 - `pom#uphaseFor(y, m, d)`: Return a string for the phase, as a unicode character
-- `pom#phaseFor(y, m, d)`: Return a string for the current phase
-- `pom#uphaseFor(y, m, d)`: Return a string for the current phase, as a unicode character
+- `pom#phase(y, m, d)`: Return a string for the current phase
+- `pom#uphase(y, m, d)`: Return a string for the current phase, as a unicode character
