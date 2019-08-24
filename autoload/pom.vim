@@ -1,95 +1,127 @@
-" Phase of Moon
-" Author: Matt Soucy
+" Phase of Moon calculation
+"
+" Usage:
+"     Use the pom#pom or pom#upom functions in your statusline
+
+let s:NewMoon = 0
+let s:WaxingCrescent = 1
+let s:FirstQuarter = 7
+let s:WaxingGibbous = 8
+let s:FullMoon = 15
+let s:WaningGibbous = 16
+let s:ThirdQuarter = 23
+let s:WaningCrescent = 24
+
+
+function! pom#julday(year, month, day)
+    if a:year < 0
+        let year = a:year + 1
+    else
+        let year = a:year
+    endif
+    let jy = str2nr(l:year)
+    let jm = str2nr(a:month) + 1
+    if a:month <= 2
+        let jy-=1
+        let jm += 12
+    endif
+    let l:jul = float2nr(365.25 * l:jy) + float2nr(30.6001 * l:jm) + str2nr(a:day) + 1720995
+    if a:day+31*(a:month+12*l:year) >= (15+31*(10+12*1582))
+        let ja = floor(0.01 * l:jy)
+        let jul = l:jul + 2 - l:ja + float2nr(0.25 * l:ja)
+    endif
+    return l:jul
+endfunction
 
 function! pom#calculate(y, m, d)
-    " Adapted from https://www.voidware.com/moon_phase.htm
-    " calculates the moon phase (0-7), accurate to 1 segment.
-    " 0 = > new moon.
-    " 4 => full moon.
+    " Moon Phase Calculation. This is black magic from ben-daglish.net/moon.shtml
+    let n = floor(12.37 * (a:y - 1900 + ((1.0*a:m - 0.5)/12.0)))
+    let RAD = 3.14159265/180.0
+    let t = l:n/1236.85
+    let t2 = l:t*l:t
+    let as = 359.2242 + 29.105356 * l:n
+    let am = 306.0253 + 385.816918 * l:n + 0.010730 * l:t2
+    let xtra = 0.75933 + 1.53058868 * l:n + ((1.178e-4) - (1.55e-7) * l:t) * l:t2
+    let xtra += (0.1734 - 3.93e-4 * l:t) * sin(l:RAD * l:as) - 0.4068 * sin(l:RAD * l:am)
+    let i = (l:xtra > 0.0 ? floor(l:xtra) :    ceil(l:xtra - 1.0))
+    let j1 = pom#julday(a:y, a:m, a:d)
+    let jd = (2415020 + 28 * l:n) + i
+    let phase = float2nr(l:j1-l:jd + 30) % 30
 
-    let l:y = a:y
-    let l:m = a:m
-    let l:d = a:d
-
-    if l:m < 3
-        let l:y -= 1
-        let l:m += 12
+    " Convert to an actual phase
+    let ret = s:NewMoon
+    if l:phase == s:NewMoon
+        let ret = s:NewMoon
+    elseif l:phase > s:NewMoon && phase < s:FirstQuarter
+        let ret = s:WaxingCrescent
+    elseif l:phase == s:FirstQuarter
+        let ret = s:FirstQuarter
+    elseif l:phase > s:FirstQuarter && phase < s:FullMoon
+        let ret = s:WaxingGibbous
+    elseif l:phase == s:FullMoon
+        let ret = s:FullMoon
+    elseif l:phase > s:FullMoon && phase < s:ThirdQuarter
+        let ret = s:WaningGibbous
+    elseif l:phase == s:ThirdQuarter
+        let ret = s:ThirdQuarter
+    else
+        let ret = s:WaningCrescent
     endif
-
-    let l:m += 1
-    let l:c = trunc(365.25 * l:y)
-    let l:e = trunc(30.6 * l:m)
-    " jd is total days elapsed
-    let l:jd = l:c + l:e + l:d - 694039.09
-    " divide by the moon cycle (29.53 days)
-    let l:jd = l:jd / 29.53
-    " int(jd) -> b, take integer part of jd
-    let l:b = trunc(l:jd)
-    " subtract integer part to leave fractional part of original jd
-    let l:jd -= l:b
-    " scale fraction from 0-8 and round by adding 0.5
-    let l:b = l:jd * 8 + 0.5
-    " 0 and 8 are the same so turn 8 into 0
-    let l:b = fmod(l:b, 8)
-    return float2nr(l:b)
+    return l:ret
 endfunction
 
-function! pom#phaseFor(y, m, d)
-    let phase = pom#calculate(a:y, a:m, a:d)
-    if phase == 0
+function! pom#phase(y, m, d)
+    let l:pnum = pom#calculate(a:y, a:m, a:d)
+    if l:pnum == s:NewMoon
         return 'New Moon'
-    elseif phase == 1
+    elseif l:pnum == s:WaxingCrescent
         return 'Waxing Crescent'
-    elseif phase == 2
+    elseif l:pnum == s:FirstQuarter
         return 'First Quarter'
-    elseif phase == 3
+    elseif l:pnum == s:WaxingGibbous
         return 'Waxing Gibbous'
-    elseif phase == 4
+    elseif l:pnum == s:FullMoon
         return 'Full Moon'
-    elseif phase == 5
+    elseif l:pnum == s:WaningGibbous
         return 'Waning Gibbous'
-    elseif phase == 6
+    elseif l:pnum == s:ThirdQuarter
         return 'Third Quarter'
-    elseif phase == 7
+    elseif l:pnum == s:WaningCrescent
         return 'Waning Crescent'
-    else
-        return ''
     endif
 endfunction
 
-function! pom#uphaseFor(y, m, d)
-    let phase = pom#calculate(a:y, a:m, a:d)
-    if phase == 0
+function! pom#uphase(y, m, d)
+    let l:pnum = pom#calculate(a:y, a:m, a:d)
+    if l:pnum == s:NewMoon
         return '🌑'
-    elseif phase == 1
+    elseif l:pnum == s:WaxingCrescent
         return '🌒'
-    elseif phase == 2
+    elseif l:pnum == s:FirstQuarter
         return '🌓'
-    elseif phase == 3
+    elseif l:pnum == s:WaxingGibbous
         return '🌔'
-    elseif phase == 4
+    elseif l:pnum == s:FullMoon
         return '🌕'
-    elseif phase == 5
+    elseif l:pnum == s:WaningGibbous
         return '🌖'
-    elseif phase == 6
+    elseif l:pnum == s:ThirdQuarter
         return '🌗'
-    elseif phase == 7
+    elseif l:pnum == s:WaningCrescent
         return '🌘'
-    else
-        return ''
     endif
 endfunction
 
-function! pom#phase()
-    let l:y = str2nr(strftime('%Y'))
-    let l:m = str2nr(strftime('%m'))
-    let l:d = str2nr(strftime('%d'))
-    return pom#phaseFor(l:y, l:m, l:d)
+function! pom#pom()
+    let l:y = str2nr(strftime("%Y"))
+    let l:m = str2nr(strftime("%m"))
+    let l:d = str2nr(strftime("%d"))
+    return pom#phase(l:y, l:m, l:d)
 endfunction
 
-function! pom#uphase()
-    let l:y = str2nr(strftime('%Y'))
-    let l:m = str2nr(strftime('%m'))
-    let l:d = str2nr(strftime('%d'))
-    return pom#uphaseFor(l:y, l:m, l:d)
+function! pom#upom()
+    let l:y = str2nr(strftime("%Y"))
+    let l:m = str2nr(strftime("%m"))
+    let l:d = str2nr(strftime("%d"))
+    return pom#uphase(l:y, l:m, l:d)
 endfunction
